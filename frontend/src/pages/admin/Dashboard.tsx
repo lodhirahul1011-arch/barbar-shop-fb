@@ -27,8 +27,9 @@ import {
 import { format } from 'date-fns';
 
 const LOCAL_APPOINTMENTS_KEY = 'barberflow_local_appointments';
-const FIRESTORE_TIMEOUT_MS = 5000;
-const SERVER_SYNC_TIMEOUT_MS = 3000;
+const FIRESTORE_TIMEOUT_MS = 1500;
+const SERVER_SYNC_TIMEOUT_MS = 1200;
+const SERVER_REFRESH_INTERVAL_MS = 5000;
 
 const withTimeout = async <T,>(promise: Promise<T>, label: string, ms = FIRESTORE_TIMEOUT_MS): Promise<T> => {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -146,6 +147,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     let latestRemoteAppointments: Appointment[] = [];
     let latestServerAppointments: Appointment[] = [];
+    let serverRefreshInFlight = false;
 
     const refreshAppointments = () => {
       setAppointments(mergeAppointments([...latestRemoteAppointments, ...latestServerAppointments]));
@@ -159,8 +161,14 @@ export default function AdminDashboard() {
     };
 
     const refreshServerAppointments = async () => {
-      latestServerAppointments = await fetchServerAppointments();
-      refreshAppointments();
+      if (serverRefreshInFlight) return;
+      serverRefreshInFlight = true;
+      try {
+        latestServerAppointments = await fetchServerAppointments();
+        refreshAppointments();
+      } finally {
+        serverRefreshInFlight = false;
+      }
     };
 
     const unsubscribe = onSnapshot(collection(db, 'appointments'), (snapshot) => {
@@ -178,7 +186,7 @@ export default function AdminDashboard() {
     });
 
     refreshServerAppointments();
-    const interval = window.setInterval(refreshServerAppointments, 1000);
+    const interval = window.setInterval(refreshServerAppointments, SERVER_REFRESH_INTERVAL_MS);
 
     return () => {
       unsubscribe();
@@ -195,12 +203,13 @@ export default function AdminDashboard() {
       : [nextAppointment, ...existing];
 
     saveLocalAppointments(updated);
-    setAppointments(current => mergeAppointments(current));
-    syncServerAppointment(nextAppointment);
+    setAppointments(current => mergeAppointments([nextAppointment, ...current]));
+    void syncServerAppointment(nextAppointment);
+    return nextAppointment;
   };
 
   const updateLocalAppointmentStatus = (appointment: Appointment, status: BookingStatus) => {
-    updateLocalAppointment(appointment, { status, changeRequested: false });
+    return updateLocalAppointment(appointment, { status, changeRequested: false });
   };
 
   const refreshQueueNow = async () => {
@@ -211,24 +220,19 @@ export default function AdminDashboard() {
 
   const handleStatusUpdate = async (appointment: Appointment, status: BookingStatus) => {
     setActionLoading(`${appointment.id}-${status}`);
-    try {
-      if (appointment.id.startsWith('local-')) {
-        updateLocalAppointmentStatus(appointment, status);
-        return;
-      }
+    const nextAppointment = updateLocalAppointmentStatus(appointment, status);
+    setActionLoading('');
 
+    if (appointment.id.startsWith('local-')) return;
+
+    try {
       await withTimeout(updateDoc(doc(db, 'appointments', appointment.id), {
         status,
         changeRequested: false,
-        updatedAt: Date.now(),
+        updatedAt: nextAppointment.updatedAt,
       }), 'Updating appointment status');
-
-      updateLocalAppointmentStatus(appointment, status);
     } catch (err) {
-      console.warn('Could not update remote appointment. Updating local demo queue.', err);
-      updateLocalAppointmentStatus(appointment, status);
-    } finally {
-      setActionLoading('');
+      console.warn('Could not update remote appointment. Local queue is already updated.', err);
     }
   };
 
@@ -281,7 +285,10 @@ export default function AdminDashboard() {
 
       try {
         try {
-          const shopSnap = await getDoc(doc(db, 'shops', editingSlot.shopId));
+          const shopSnap = await withTimeout(
+            getDoc(doc(db, 'shops', editingSlot.shopId)),
+            'Loading shop settings for slot edit'
+          );
         if (shopSnap.exists()) {
           settings = shopSnap.data().settings || defaultSettings;
         }
@@ -294,11 +301,11 @@ export default function AdminDashboard() {
           .filter(app => app.shopId === editingSlot.shopId && app.date === editDate && app.id !== editingSlot.id);
 
         try {
-          const snap = await getDocs(query(
+          const snap = await withTimeout(getDocs(query(
             collection(db, 'appointments'),
             where('shopId', '==', editingSlot.shopId),
             where('date', '==', editDate)
-          ));
+          )), 'Loading appointments for slot edit');
           existingApps = snap.docs
             .map(appDoc => ({ id: appDoc.id, ...appDoc.data() } as Appointment))
             .filter(app => app.id !== editingSlot.id);
@@ -332,40 +339,33 @@ export default function AdminDashboard() {
     return () => {
       ignore = true;
     };
-  }, [editingSlot, editDate, appointments]);
+  }, [editingSlot?.id, editDate]);
 
   const handleSlotChange = async () => {
     if (!editingSlot || !editDate || !editTime) return;
 
     setActionLoading(`${editingSlot.id}-slot`);
+    const changes: Partial<Appointment> = {
+      date: editDate,
+      time: editTime,
+      status: BookingStatus.PENDING,
+      changeRequested: true,
+      changeRequestedAt: Date.now(),
+    };
+
+    const nextAppointment = updateLocalAppointment(editingSlot, changes);
+    setEditingSlot(null);
+    setActionLoading('');
+
+    if (editingSlot.id.startsWith('local-')) return;
+
     try {
-      const changes = {
-        date: editDate,
-        time: editTime,
-        status: BookingStatus.PENDING,
-        changeRequested: true,
-        changeRequestedAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-
-      if (editingSlot.id.startsWith('local-')) {
-        updateLocalAppointment(editingSlot, changes);
-      } else {
-        await updateDoc(doc(db, 'appointments', editingSlot.id), changes);
-        await syncServerAppointment({ ...editingSlot, ...changes });
-      }
-
-      setEditingSlot(null);
+      await withTimeout(updateDoc(doc(db, 'appointments', editingSlot.id), {
+        ...changes,
+        updatedAt: nextAppointment.updatedAt,
+      }), 'Updating appointment slot');
     } catch (err) {
-      console.warn('Could not change slot.', err);
-      updateLocalAppointment(editingSlot, {
-        date: editDate,
-        time: editTime,
-        status: BookingStatus.PENDING,
-      });
-      setEditingSlot(null);
-    } finally {
-      setActionLoading('');
+      console.warn('Could not change remote slot. Local queue is already updated.', err);
     }
   };
 

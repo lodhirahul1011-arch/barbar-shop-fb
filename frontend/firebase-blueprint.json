@@ -1,0 +1,94 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["customer", "owner", "admin"] },
+        "whatsappEnabled": { "type": "boolean" },
+        "profileImage": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["uid", "phoneNumber", "role", "whatsappEnabled", "createdAt"]
+    },
+    "Shop": {
+      "title": "Shop",
+      "description": "Barber shop details and settings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "image": { "type": "string" },
+        "settings": {
+          "type": "object",
+          "properties": {
+            "workingHours": { "type": "object" },
+            "slotDuration": { "type": "number" },
+            "breakTimes": { "type": "array" },
+            "blockedDates": { "type": "array" }
+          }
+        },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "ownerId", "name", "settings", "createdAt"]
+    },
+    "Service": {
+      "title": "Service",
+      "description": "Barber services offered by a shop",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "shopId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "duration": { "type": "number" },
+        "price": { "type": "number" },
+        "image": { "type": "string" }
+      },
+      "required": ["id", "shopId", "name", "duration", "price"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "Booking appointment details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "shopId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "rejected", "cancelled", "completed"] },
+        "paymentStatus": { "type": "string", "enum": ["pending", "paid", "failed"] },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "shopId", "customerId", "serviceId", "date", "time", "status", "paymentStatus", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/shops/{shopId}": {
+      "schema": "Shop",
+      "description": "Barber shops"
+    },
+    "/shops/{shopId}/services/{serviceId}": {
+      "schema": "Service",
+      "description": "Shop services"
+    },
+    "/appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "Bookings"
+    }
+  }
+}

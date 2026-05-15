@@ -1,0 +1,102 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Unbounded:wght@400;700;900&family=Space+Grotesk:wght@400;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Unbounded", display;
+  --font-mono: "Space Grotesk", monospace;
+  
+  --color-accent: #D4AF37;
+  --color-gold: #D4AF37;
+  --color-warning: #F59E0B;
+  --color-success: #10B981;
+}
+
+:root.dark {
+  --color-ink: #f8fafc;
+  --color-muted: #94a3b8;
+  --color-paper: #050505;
+  --color-sidebar: #0a0a0a;
+  --color-card: #121212;
+  --color-border: rgba(255, 255, 255, 0.06);
+}
+
+:root.light {
+  --color-ink: #0f172a;
+  --color-muted: #64748b;
+  --color-paper: #f8fafc;
+  --color-sidebar: #f1f5f9;
+  --color-card: #ffffff;
+  --color-border: rgba(15, 23, 42, 0.1);
+}
+
+@layer base {
+  body {
+    @apply bg-[var(--color-paper)] text-[var(--color-ink)] font-sans transition-all duration-300 antialiased;
+  }
+  
+  h1 {
+    @apply font-display text-8xl font-black uppercase leading-[0.9] tracking-tighter text-[var(--color-ink)];
+  }
+
+  h2 {
+    @apply font-display text-2xl font-black uppercase tracking-tight text-[var(--color-ink)];
+  }
+
+  .text-muted {
+    @apply text-[var(--color-muted)];
+  }
+
+  .text-h-glow {
+    text-shadow: 0 0 20px rgba(217, 119, 6, 0.4);
+  }
+}
+
+.badge-wa {
+  @apply bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase;
+}
+
+.badge-status {
+  @apply text-[10px] px-2 py-0.5 rounded font-bold uppercase;
+}
+
+.scrollbar-hide,
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-6xl px-4;
+  }
+
+  .glass {
+    @apply rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] shadow-xl shadow-black/10;
+  }
+
+  .input-ui {
+    @apply h-12 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-sidebar)] px-4 text-sm text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-muted)] focus:border-accent focus:ring-2 focus:ring-accent/20;
+  }
+
+  .input {
+    @apply h-12 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-sidebar)] px-4 text-sm text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-muted)] focus:border-accent focus:ring-2 focus:ring-accent/20;
+  }
+
+  .btn-primary {
+    @apply inline-flex h-12 items-center justify-center gap-2 rounded-md bg-accent px-5 text-sm font-black uppercase tracking-widest text-white transition-all hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-ghost {
+    @apply inline-flex h-11 items-center justify-center rounded-md border border-[var(--color-border)] px-5 text-sm font-black uppercase tracking-widest text-[var(--color-ink)] transition-colors hover:border-accent hover:text-accent;
+  }
+
+  .text-neon {
+    @apply text-accent;
+  }
+}

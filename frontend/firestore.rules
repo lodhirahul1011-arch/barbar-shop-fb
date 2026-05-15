@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isShopOwner(shopId) {
+      return isAuthenticated() &&
+        request.auth.token.role in ['owner', 'admin'];
+    }
+
+    match /shops/{shopId} {
+      allow read: if true;
+      allow write: if isShopOwner(shopId);
+
+      match /bookings/{bookingId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update: if isShopOwner(shopId);
+        allow delete: if false;
+      }
+
+      match /services/{serviceId} {
+        allow read: if true;
+        allow write: if isShopOwner(shopId);
+      }
+
+      match /barbers/{barberId} {
+        allow read: if true;
+        allow write: if isShopOwner(shopId);
+      }
+    }
+
+    match /appointments/{appointmentId} {
+      // The app currently uses its own JWT auth, so Firestore cannot see that
+      // session as request.auth. Keep this collection reachable for the booking UI.
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if false;
+    }
+
+    match /paymentVerifications/{verificationId} {
+      allow create: if true;
+      allow read, update: if true;
+      allow delete: if false;
+    }
+  }
+}

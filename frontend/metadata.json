@@ -1,0 +1,6 @@
+{
+  "name": "BarberFlow",
+  "description": "A production-ready WhatsApp-first barber shop booking platform featuring real-time appointment management, automated slot suggestions, and comprehensive dashboards for customers, owners, and admins.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": []
+}

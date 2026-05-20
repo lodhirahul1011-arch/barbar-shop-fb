@@ -10,6 +10,7 @@ import {
   getDocs 
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { notifyCustomerStatusUpdate } from '../../services/notificationService';
 import { Appointment, BookingStatus, PaymentStatus } from '../../types';
 import { 
   Check, 
@@ -71,10 +72,23 @@ export default function OwnerAppointments() {
 
   const handleStatusUpdate = async (id: string, status: BookingStatus) => {
     try {
+      const appointment = appointments.find(app => app.id === id);
       await updateDoc(doc(db, 'appointments', id), {
         status,
         updatedAt: Date.now()
       });
+      if (appointment) {
+        void notifyCustomerStatusUpdate({
+          appointment: { ...appointment, status, updatedAt: Date.now() },
+          customer: {
+            name: appointment.notes,
+            email: appointment.customerEmail,
+          },
+          actorName: 'Owner',
+        }, status).catch(err => {
+          console.warn('Could not send customer status email.', err);
+        });
+      }
     } catch (err) {
       console.error(err);
     }

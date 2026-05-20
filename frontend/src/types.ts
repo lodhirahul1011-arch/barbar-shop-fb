@@ -22,6 +22,7 @@ export interface UserProfile {
   uid: string;
   phoneNumber: string;
   displayName?: string;
+  email?: string;
   role: UserRole;
   whatsappEnabled: boolean;
   profileImage?: string;
@@ -67,6 +68,7 @@ export interface Appointment {
   createdAt: number;
   updatedAt: number;
   notes?: string;
+  customerEmail?: string;
   changeRequested?: boolean;
   changeRequestedAt?: number;
 }

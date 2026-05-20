@@ -11,6 +11,10 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import {
+  notifyCustomerSlotChanged,
+  notifyCustomerStatusUpdate,
+} from '../../services/notificationService';
 import { Appointment, BookingStatus, ShopSettings, UserProfile } from '../../types';
 import { isSlotAvailable } from '../../lib/booking';
 import {
@@ -221,6 +225,16 @@ export default function AdminDashboard() {
   const handleStatusUpdate = async (appointment: Appointment, status: BookingStatus) => {
     setActionLoading(`${appointment.id}-${status}`);
     const nextAppointment = updateLocalAppointmentStatus(appointment, status);
+    void notifyCustomerStatusUpdate({
+      appointment: nextAppointment,
+      customer: {
+        name: nextAppointment.notes,
+        email: nextAppointment.customerEmail,
+      },
+      actorName: 'Admin',
+    }, status).catch(err => {
+      console.warn('Could not send customer status email.', err);
+    });
     setActionLoading('');
 
     if (appointment.id.startsWith('local-')) return;
@@ -345,6 +359,8 @@ export default function AdminDashboard() {
     if (!editingSlot || !editDate || !editTime) return;
 
     setActionLoading(`${editingSlot.id}-slot`);
+    const previousDate = editingSlot.date;
+    const previousTime = editingSlot.time;
     const changes: Partial<Appointment> = {
       date: editDate,
       time: editTime,
@@ -354,6 +370,18 @@ export default function AdminDashboard() {
     };
 
     const nextAppointment = updateLocalAppointment(editingSlot, changes);
+    void notifyCustomerSlotChanged({
+      appointment: nextAppointment,
+      customer: {
+        name: nextAppointment.notes,
+        email: nextAppointment.customerEmail,
+      },
+      actorName: 'Admin',
+      previousDate,
+      previousTime,
+    }).catch(err => {
+      console.warn('Could not send slot change email.', err);
+    });
     setEditingSlot(null);
     setActionLoading('');
 

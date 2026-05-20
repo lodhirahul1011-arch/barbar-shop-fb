@@ -11,6 +11,7 @@ import {
   getDocs 
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { notifyAdminSlotChangeRequest } from '../../services/notificationService';
 import { 
   Appointment, 
   ShopSettings, 
@@ -185,6 +186,8 @@ export default function ReschedulePage() {
   const handleReschedule = async () => {
     if (!appointmentId || !selectedDate || !selectedTime) return;
     setRescheduling(true);
+    const previousDate = appointment?.date;
+    const previousTime = appointment?.time;
     try {
       const changes = {
         date: selectedDate,
@@ -200,6 +203,17 @@ export default function ReschedulePage() {
         const updatedAppointment = { ...appointment, ...changes };
         saveLocalAppointment(updatedAppointment);
         await syncServerAppointment(updatedAppointment);
+        await Promise.allSettled([
+          notifyAdminSlotChangeRequest({
+            appointment: updatedAppointment,
+            customer: {
+              name: profile?.displayName,
+              email: profile?.email,
+            },
+            previousDate,
+            previousTime,
+          }),
+        ]);
         setAppointment(updatedAppointment);
       }
       setStep(2);
@@ -217,6 +231,17 @@ export default function ReschedulePage() {
         };
         saveLocalAppointment(fallbackAppointment);
         await syncServerAppointment(fallbackAppointment);
+        await Promise.allSettled([
+          notifyAdminSlotChangeRequest({
+            appointment: fallbackAppointment,
+            customer: {
+              name: profile?.displayName,
+              email: profile?.email,
+            },
+            previousDate,
+            previousTime,
+          }),
+        ]);
         setAppointment(fallbackAppointment);
         setStep(2);
         return;

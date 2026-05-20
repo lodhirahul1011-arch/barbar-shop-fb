@@ -63,6 +63,7 @@ const mapProfile = (authUser: AuthUser): UserProfile => ({
   uid: authUser.uid || authUser.id || authUser._id || authUser.email,
   phoneNumber: authUser.phoneNumber || authUser.phone || authUser.email,
   displayName: authUser.displayName || authUser.fullName || authUser.name || authUser.email,
+  email: authUser.email,
   role: toRole(authUser.role),
   whatsappEnabled: Boolean(authUser.whatsappEnabled),
   createdAt: toTimestamp(authUser.createdAt),

@@ -11,21 +11,29 @@ dns.setServers(['1.1.1.1', '8.8.8.8']);
 const authRoutes = require('./routes/authRoutes');
 
 const app = express();
+
+const parseOrigins = (...values) => values
+  .flatMap((value) => (value || '').split(','))
+  .map((origin) => origin.trim().replace(/\/$/, ''))
+  .filter(Boolean);
+
 const allowedOrigins = [
-  process.env.CLIENT_ORIGIN,
-  process.env.FRONTEND_URL,
+  ...parseOrigins(process.env.CLIENT_ORIGIN, process.env.FRONTEND_URL, process.env.APP_URL),
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
-].filter(Boolean);
+];
 
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    const normalizedOrigin = origin && origin.replace(/\/$/, '');
+    if (!normalizedOrigin || allowedOrigins.includes(normalizedOrigin)) return callback(null, true);
     return callback(new Error(`CORS blocked for origin: ${origin}`));
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json());
 

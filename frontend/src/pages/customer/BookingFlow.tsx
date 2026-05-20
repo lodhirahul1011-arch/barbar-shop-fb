@@ -11,6 +11,10 @@ import {
   setDoc
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import {
+  notifyAdminNewBooking,
+  notifyCustomerBookingSubmitted,
+} from '../../services/notificationService';
 import { 
   BarberService, 
   ShopSettings, 
@@ -335,7 +339,8 @@ export default function BookingFlow() {
         paymentStatus: PaymentStatus.PENDING,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-        notes: profile.displayName || 'Guest Client'
+        notes: profile.displayName || 'Guest Client',
+        customerEmail: profile.email,
     });
 
     const appRef = doc(collection(db, 'appointments'));
@@ -362,10 +367,43 @@ export default function BookingFlow() {
       saveLocalAppointment(newAppointment);
       await syncServerAppointment(newAppointment);
       await withTimeout(setDoc(appRef, newAppointment), 'Saving booking request');
+
+      await Promise.allSettled([
+        notifyAdminNewBooking({
+          appointment: newAppointment,
+          customer: {
+            name: profile.displayName,
+            email: profile.email,
+          },
+        }),
+        notifyCustomerBookingSubmitted({
+          appointment: newAppointment,
+          customer: {
+            name: profile.displayName,
+            email: profile.email,
+          },
+        }),
+      ]);
     } catch (err) {
       if (isPermissionError(err) || (err instanceof Error && err.message.includes('timed out'))) {
         saveLocalAppointment(newAppointment);
         await syncServerAppointment(newAppointment);
+        await Promise.allSettled([
+          notifyAdminNewBooking({
+            appointment: newAppointment,
+            customer: {
+              name: profile.displayName,
+              email: profile.email,
+            },
+          }),
+          notifyCustomerBookingSubmitted({
+            appointment: newAppointment,
+            customer: {
+              name: profile.displayName,
+              email: profile.email,
+            },
+          }),
+        ]);
         return true;
       }
 
